@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CamSpy" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#C9A227</item>
+        <item name="colorPrimaryVariant">#9B7A10</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="colorSecondary">#00FF88</item>
+        <item name="colorOnSecondary">#000000</item>
+        <item name="android:windowBackground">#0D0D0F</item>
+        <item name="android:statusBarColor">#080810</item>
+        <item name="android:navigationBarColor">#080810</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,2 @@
+// This file intentionally left minimal - root build.gradle handles app config
+// Required for multi-module structure

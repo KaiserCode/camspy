@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>CamSpy</title>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=VT323&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0d0d0f; --bg2:#111115; --panel:#13131a;
+  --border:#2a2a3a; --border2:#1e1e2e;
+  --gold:#c9a227; --gold2:#e8c040;
+  --green:#00ff88; --red:#ff3333; --blue:#4499ff;
+  --text:#d8d8e8; --text2:#888899; --text3:#555566;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;overflow:hidden;}
+#app{display:flex;flex-direction:column;height:100vh;width:100%;overflow:hidden;position:relative;}
+
+/* Rain bg */
+.rain-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(180deg,transparent,transparent 6px,rgba(120,160,255,0.04) 6px,rgba(120,160,255,0.04) 7px),
+  repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(120,160,255,0.02) 30px,rgba(120,160,255,0.02) 31px);}
+
+/* ── IP Badge ─────────────────────────────────── */
+.ip-badge{
+  position:absolute;top:10px;right:10px;z-index:100;
+  background:rgba(10,10,20,0.92);border:1px solid var(--border);
+  border-radius:20px;padding:5px 12px;
+  display:flex;align-items:center;gap:6px;
+  font-family:'VT323',monospace;font-size:13px;
+  backdrop-filter:blur(4px);
+}
+.ip-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background 0.3s;}
+.ip-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green);}
+.ip-dot.proxy{background:var(--gold);box-shadow:0 0 6px var(--gold);}
+.ip-dot.loading{background:var(--blue);animation:pulse 1s ease-in-out infinite;}
+.ip-dot.error{background:var(--red);}
+.ip-text{color:var(--text2);font-size:13px;}
+.ip-refresh{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 2px;}
+
+/* ── Header ───────────────────────────────────── */
+.header{
+  padding:14px 16px 10px;
+  background:linear-gradient(180deg,#080810 0%,transparent 100%);
+  border-bottom:1px solid #1a1a2a;
+  position:relative;z-index:1;
+  text-align:center;
+  flex-shrink:0;
+}
+.header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.emoji-row{font-size:16px;letter-spacing:4px;opacity:0.6;margin-bottom:3px;}
+.title{font-family:'Special Elite',cursive;font-size:32px;letter-spacing:8px;
+  color:var(--text);text-shadow:0 0 20px rgba(201,162,39,0.2);line-height:1;}
+.title span{color:var(--gold);text-shadow:0 0 15px var(--gold);}
+.subtitle{font-family:'VT323',monospace;font-size:13px;color:var(--text3);letter-spacing:3px;margin-top:3px;}
+
+/* ── Status bar ───────────────────────────────── */
+.statusbar{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 12px;background:#070710;
+  font-family:'VT323',monospace;font-size:13px;color:var(--text2);
+  border-bottom:1px solid var(--border2);flex-shrink:0;
+  overflow:hidden;
+}
+.sep{color:var(--border);}
+#scan-status{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── Tabs ─────────────────────────────────────── */
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{flex:1;padding:10px 4px;background:none;border:none;
+  border-bottom:2px solid transparent;color:var(--text3);
+  font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:1px;cursor:pointer;transition:all 0.2s;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);background:rgba(201,162,39,0.05);}
+
+/* ── Content ──────────────────────────────────── */
+.tab-content{display:none;flex-direction:column;gap:10px;
+  padding:12px 12px;overflow-y:auto;flex:1;position:relative;z-index:1;}
+.tab-content.active{display:flex;}
+
+/* ── Panel ────────────────────────────────────── */
+.panel{background:var(--panel);border:1px solid var(--border2);border-radius:4px;
+  padding:11px 13px;position:relative;}
+.panel::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;
+  background:var(--gold);border-radius:4px 0 0 4px;opacity:0.5;}
+.panel-label{font-family:'VT323',monospace;font-size:13px;letter-spacing:2px;
+  color:var(--gold);margin-bottom:9px;}
+
+/* ── Inputs ───────────────────────────────────── */
+.spy-input{background:#0a0a12;border:1px solid var(--border);color:var(--text);
+  padding:10px 12px;font-family:'Rajdhani',sans-serif;font-size:15px;
+  border-radius:3px;width:100%;outline:none;}
+.spy-input:focus{border-color:var(--gold);}
+.spy-textarea{width:100%;background:#0a0a12;border:1px solid var(--border);color:var(--text);
+  padding:9px 12px;font-family:'VT323',monospace;font-size:13px;
+  border-radius:3px;resize:vertical;min-height:80px;line-height:1.6;outline:none;}
+.spy-select{background:#0a0a12;border:1px solid var(--border);color:var(--text);
+  padding:9px 10px;font-family:'Rajdhani',sans-serif;font-size:14px;
+  border-radius:3px;width:100%;outline:none;}
+.input-row{display:flex;gap:8px;align-items:center;}
+
+/* ── Buttons ──────────────────────────────────── */
+.spy-btn{cursor:pointer;border:none;font-family:'Rajdhani',sans-serif;font-weight:700;
+  letter-spacing:1px;border-radius:3px;padding:10px 18px;font-size:14px;transition:all 0.15s;}
+.spy-btn:active{transform:scale(0.97);}
+.spy-btn.primary{background:var(--gold);color:#000;}
+.spy-btn.secondary{background:#1e1e2e;border:1px solid var(--border);color:var(--text);}
+.spy-btn.danger{background:#1a0808;border:1px solid #441111;color:var(--red);}
+.spy-btn.big{padding:13px 28px;font-size:16px;letter-spacing:2px;width:100%;}
+.spy-btn.sm{padding:6px 12px;font-size:12px;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* ── Toggles ──────────────────────────────────── */
+.source-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.source-toggle{cursor:pointer;}
+.source-toggle input{display:none;}
+.toggle-box{display:block;padding:8px 6px;background:#0d0d18;border:1px solid var(--border2);
+  border-radius:3px;font-size:11px;font-weight:600;color:var(--text2);
+  text-align:center;transition:all 0.15s;line-height:1.4;}
+.source-toggle input:checked + .toggle-box{
+  background:rgba(201,162,39,0.1);border-color:var(--gold);color:var(--gold2);}
+
+/* ── Proxy mode toggle ────────────────────────── */
+.proxy-mode-row{display:flex;gap:8px;margin-bottom:10px;}
+.mode-btn{flex:1;padding:8px 6px;background:#0d0d18;border:1px solid var(--border2);
+  border-radius:3px;font-size:12px;font-weight:700;color:var(--text2);
+  text-align:center;cursor:pointer;letter-spacing:1px;font-family:'Rajdhani',sans-serif;}
+.mode-btn.active{background:rgba(201,162,39,0.12);border-color:var(--gold);color:var(--gold2);}
+
+/* ── Log ──────────────────────────────────────── */
+.log-box{background:#06060d;border:1px solid var(--border2);border-radius:3px;
+  padding:8px 10px;max-height:120px;overflow-y:auto;
+  font-family:'VT323',monospace;font-size:13px;line-height:1.7;}
+.log-entry{display:block;}
+.log-entry.info{color:var(--text3);}
+.log-entry.success{color:var(--green);}
+.log-entry.warn{color:var(--gold);}
+.log-entry.error{color:var(--red);}
+.log-entry.source{color:var(--blue);}
+
+/* ── Location tag ─────────────────────────────── */
+.location-tag{font-family:'VT323',monospace;font-size:13px;color:var(--green);
+  margin-top:6px;min-height:16px;letter-spacing:1px;}
+
+/* ── Results ──────────────────────────────────── */
+.results-toolbar{display:flex;gap:8px;align-items:center;padding-bottom:8px;
+  border-bottom:1px solid var(--border2);}
+.results-toolbar .spy-input{flex:1;}
+.results-grid{display:flex;flex-direction:column;gap:8px;}
+.result-card{background:var(--panel);border:1px solid var(--border2);
+  border-left:3px solid var(--gold);border-radius:4px;overflow:hidden;}
+.card-thumb{width:100%;height:80px;background:#08080f;display:flex;
+  align-items:center;justify-content:center;font-size:28px;color:var(--text3);}
+.card-thumb img{width:100%;height:100%;object-fit:cover;}
+.card-body{padding:8px 10px;}
+.card-title{font-weight:700;font-size:14px;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
+.card-meta{font-family:'VT323',monospace;font-size:12px;color:var(--text3);
+  display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.badge{border-radius:2px;padding:1px 7px;font-size:11px;}
+.badge-source{background:rgba(201,162,39,0.1);color:var(--gold);border:1px solid rgba(201,162,39,0.2);}
+.badge-live{background:rgba(0,255,136,0.1);color:var(--green);border:1px solid rgba(0,255,136,0.2);}
+.card-actions{display:flex;gap:4px;padding:6px 10px;border-top:1px solid var(--border2);}
+.card-act{flex:1;padding:5px;background:none;border:1px solid var(--border2);
+  border-radius:2px;color:var(--text3);font-size:11px;cursor:pointer;
+  font-family:'Rajdhani',sans-serif;font-weight:700;text-align:center;}
+.card-act:active{border-color:var(--gold);color:var(--gold);}
+
+/* ── Proxy list ───────────────────────────────── */
+.proxy-list{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;}
+.proxy-item{display:flex;align-items:center;gap:7px;padding:8px 10px;
+  background:#0a0a14;border:1px solid var(--border2);border-radius:3px;
+  font-family:'VT323',monospace;font-size:13px;}
+.proxy-item.ok{border-left:3px solid var(--green);}
+.proxy-item.dead{border-left:3px solid var(--red);opacity:0.45;}
+.proxy-item.testing{border-left:3px solid var(--gold);}
+.proxy-item.active-proxy{border-left:3px solid var(--gold);background:rgba(201,162,39,0.06);}
+.proxy-addr{flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.proxy-lat{color:var(--green);font-size:11px;flex-shrink:0;}
+.pact-btn{background:none;border:1px solid var(--border2);color:var(--text3);
+  padding:3px 8px;font-size:11px;cursor:pointer;border-radius:2px;
+  font-family:'Rajdhani',sans-serif;font-weight:700;flex-shrink:0;}
+.pact-btn:active{border-color:var(--gold);color:var(--gold);}
+
+/* ── Settings ─────────────────────────────────── */
+.setting-row{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;color:var(--text2);font-size:14px;}
+.setting-row label{flex:1;}
+.setting-row .spy-input{width:80px;}
+.toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:#1e1e2e;border:1px solid var(--border);
+  border-radius:24px;cursor:pointer;transition:0.3s;}
+.toggle-slider::before{content:'';position:absolute;height:16px;width:16px;
+  left:3px;bottom:3px;background:var(--text3);border-radius:50%;transition:0.3s;}
+.toggle-switch input:checked + .toggle-slider{background:rgba(201,162,39,0.2);border-color:var(--gold);}
+.toggle-switch input:checked + .toggle-slider::before{transform:translateX(20px);background:var(--gold);}
+
+/* ── Empty state ──────────────────────────────── */
+.empty-state{text-align:center;padding:30px 20px;color:var(--text3);font-size:14px;line-height:2;}
+.empty-icon{font-size:36px;margin-bottom:8px;opacity:0.4;}
+
+/* ── Search actions ───────────────────────────── */
+.search-actions{display:flex;flex-direction:column;gap:8px;}
+
+/* ── Animations ───────────────────────────────── */
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+@keyframes blink{50%{opacity:0;}}
+.blink{animation:blink 1s step-end infinite;}
+@keyframes slidein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.result-card{animation:slidein 0.25s ease both;}
+
+/* ── Scrollbars ───────────────────────────────── */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:#1e1e2e;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="rain-bg"></div>
+
+  <!-- IP Badge (top right) -->
+  <div class="ip-badge" id="ip-badge">
+    <div class="ip-dot loading" id="ip-dot"></div>
+    <span class="ip-text" id="ip-text">checking...</span>
+    <button class="ip-refresh" onclick="refreshIp()" title="Refresh IP">↻</button>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="emoji-row">🕵️ 📹 🔭 🧥 👒</div>
+    <div class="title">CAM<span>SPY</span></div>
+    <div class="subtitle">— GOGO GADGET WEBCAM FINDER —</div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <span id="proxy-status">🔴 NO PROXY</span>
+    <span class="sep">|</span>
+    <span id="scan-status">🕵️ STANDING BY</span>
+    <span class="sep">|</span>
+    <span id="result-count">📹 0</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="search">🔍 SEARCH</button>
+    <button class="tab" data-tab="results">📹 RESULTS</button>
+    <button class="tab" data-tab="proxies">🧥 PROXIES</button>
+    <button class="tab" data-tab="settings">⚙️ CONFIG</button>
+  </div>
+
+  <!-- ═══ SEARCH TAB ═══ -->
+  <div class="tab-content active" id="tab-search">
+    <div class="panel">
+      <div class="panel-label">📍 TARGET LOCATION</div>
+      <div class="input-row">
+        <input type="text" id="location-input" class="spy-input" placeholder="City, State  or  ZIP Code"/>
+        <button class="spy-btn secondary" style="padding:10px 13px;flex-shrink:0" onclick="useGeolocation()">📡</button>
+      </div>
+      <div class="location-tag" id="location-tag"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">🎯 INTEL SOURCES</div>
+      <div class="source-grid">
+        <label class="source-toggle"><input type="checkbox" id="src-windy" checked/><span class="toggle-box">🌬️ Windy</span></label>
+        <label class="source-toggle"><input type="checkbox" id="src-earthcam" checked/><span class="toggle-box">🌍 EarthCam</span></label>
+        <label class="source-toggle"><input type="checkbox" id="src-google" checked/><span class="toggle-box">🔍 Google</span></label>
+        <label class="source-toggle"><input type="checkbox" id="src-bing" checked/><span class="toggle-box">🔷 Bing</span></label>
+        <label class="source-toggle"><input type="checkbox" id="src-traffic" checked/><span class="toggle-box">🚦 Traffic</span></label>
+        <label class="source-toggle"><input type="checkbox" id="src-crawl"/><span class="toggle-box">🕷️ Crawl</span></label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">🎭 CAM TYPE FILTER</div>
+      <div class="source-grid">
+        <label class="source-toggle"><input type="checkbox" class="cam-type" value="weather" checked/><span class="toggle-box">⛅ Weather</span></label>
+        <label class="source-toggle"><input type="checkbox" class="cam-type" value="traffic" checked/><span class="toggle-box">🚦 Traffic</span></label>
+        <label class="source-toggle"><input type="checkbox" class="cam-type" value="business" checked/><span class="toggle-box">🏪 Business</span></label>
+        <label class="source-toggle"><input type="checkbox" class="cam-type" value="city" checked/><span class="toggle-box">🏙️ City</span></label>
+        <label class="source-toggle"><input type="checkbox" class="cam-type" value="beach" checked/><span class="toggle-box">🏖️ Beach</span></label>
+        <label class="source-toggle"><input type="checkbox" class="cam-type" value="other" checked/><span class="toggle-box">📹 Other</span></label>
+      </div>
+    </div>
+
+    <div class="search-actions">
+      <button id="search-btn" class="spy-btn primary big" onclick="startSearch()">🕵️ DEPLOY GADGETS</button>
+      <button id="stop-btn" class="spy-btn danger big" style="display:none" onclick="stopSearch()">✋ ABORT MISSION</button>
+    </div>
+
+    <div class="log-box" id="search-log"></div>
+  </div>
+
+  <!-- ═══ RESULTS TAB ═══ -->
+  <div class="tab-content" id="tab-results">
+    <div class="results-toolbar">
+      <input type="text" id="results-filter" class="spy-input" placeholder="🔍 filter..." oninput="renderResults()"/>
+      <button class="spy-btn secondary sm" onclick="exportCSV()">💾</button>
+    </div>
+    <div id="results-grid" class="results-grid">
+      <div class="empty-state"><div class="empty-icon">🕵️</div>No intel yet.<br/>Deploy gadgets first.</div>
+    </div>
+  </div>
+
+  <!-- ═══ PROXIES TAB ═══ -->
+  <div class="tab-content" id="tab-proxies">
+    <div class="panel">
+      <div class="panel-label">🔀 PROXY MODE</div>
+      <div class="proxy-mode-row">
+        <div class="mode-btn active" id="mode-locked" onclick="setProxyMode('locked')">🔒 LOCKED TO 1</div>
+        <div class="mode-btn" id="mode-auto" onclick="setProxyMode('auto')">🔄 AUTO-ROTATE</div>
+      </div>
+      <div id="mode-desc" style="font-size:12px;color:var(--text3);font-family:'VT323',monospace;letter-spacing:1px;">
+        All requests use the same proxy. Tap USE on a proxy to activate it.
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">📥 ADD PROXIES</div>
+      <div class="btn-row" style="margin-bottom:8px;">
+        <button class="spy-btn secondary sm" onclick="fetchFreeProxies()" id="fetch-btn">📥 Fetch Free</button>
+        <button class="spy-btn secondary sm" onclick="testAllProxies()" id="test-btn">🧪 Test All</button>
+        <button class="spy-btn danger sm" onclick="clearProxies()">🗑️ Clear</button>
+      </div>
+      <textarea id="proxy-input" class="spy-textarea" placeholder="Paste proxies (one per line):&#10;192.168.1.1:8080&#10;socks5://10.0.0.1:1080"></textarea>
+      <button class="spy-btn primary sm" onclick="addProxies()" style="width:100%">➕ Add to Pool</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">📋 PROXY POOL <span id="proxy-count" style="color:var(--text3)"></span></div>
+      <div id="proxy-list" class="proxy-list">
+        <div class="empty-state" style="padding:16px">No proxies loaded.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SETTINGS TAB ═══ -->
+  <div class="tab-content" id="tab-settings">
+    <div class="panel">
+      <div class="panel-label">⏱️ RATE LIMITING</div>
+      <div class="setting-row">
+        <label>Request delay (ms)</label>
+        <input type="number" id="req-delay" class="spy-input" value="2000" min="500" max="30000"/>
+      </div>
+      <div class="setting-row">
+        <label>Random jitter (ms)</label>
+        <input type="number" id="req-jitter" class="spy-input" value="1500" min="0" max="10000"/>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">🔍 SEARCH</div>
+      <div class="setting-row">
+        <label>Search radius (km)</label>
+        <input type="number" id="search-radius" class="spy-input" value="50" min="5" max="500"/>
+      </div>
+      <div class="setting-row">
+        <label>Max results / source</label>
+        <input type="number" id="max-results" class="spy-input" value="20" min="5" max="100"/>
+      </div>
+      <div class="setting-row">
+        <label>Rotate User-Agent</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="rotate-ua" checked/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">💾 DATA</div>
+      <div class="btn-row">
+        <button class="spy-btn primary sm" onclick="saveSettings()">💾 Save</button>
+        <button class="spy-btn danger sm" onclick="clearResults()">🗑️ Clear Results</button>
+        <button class="spy-btn secondary sm" onclick="exportJSON()">📤 JSON</button>
+      </div>
+    </div>
+    <div style="text-align:center;padding:16px;color:var(--text3);font-size:12px;font-family:'VT323',monospace;letter-spacing:1px;line-height:2;">
+      🕵️ CamSpy v1.0 — GoGo Gadget Webcam Finder<br/>
+      Finds publicly shared webcams from businesses,<br/>
+      traffic agencies, and public cam directories.<br/>
+      For legal use on publicly accessible cameras only.
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

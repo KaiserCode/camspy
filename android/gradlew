@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# Gradle wrapper script for POSIX systems
+#
+set -e
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+GRADLE_HOME="$HOME/.gradle"
+WRAPPER_JAR="$SCRIPT_DIR/gradle/wrapper/gradle-wrapper.jar"
+WRAPPER_PROPERTIES="$SCRIPT_DIR/gradle/wrapper/gradle-wrapper.properties"
+
+JVM_OPTS=""
+GRADLE_OPTS="${GRADLE_OPTS:-}"
+
+exec java $JVM_OPTS \
+  -classpath "$WRAPPER_JAR" \
+  org.gradle.wrapper.GradleWrapperMain \
+  "$@"
